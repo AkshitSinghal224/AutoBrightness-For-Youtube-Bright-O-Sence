@@ -3,14 +3,35 @@
   let brightOsenseisON = false;
   let previousOpacity = 100;
   let isSpacebarPressed = false;
-  let lastClickTime = new Date().getTime();
-  const clickDelay = 200; // Adjust the delay (in milliseconds) as needed
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "YOUTUBE") {
       newVideoLoaded();
     }
   });
+
+  // Create a MutationObserver to watch for changes in the video player container
+  const observer = new MutationObserver((mutationsList, observer) => {
+    for (let mutation of mutationsList) {
+      if (
+        mutation.type === "childList" &&
+        mutation.target.classList.contains("video-stream")
+      ) {
+        // Reset the script when a new video starts
+        resetScript();
+        // Reinitialize the script for the new video
+        newVideoLoaded();
+        break;
+      }
+    }
+  });
+
+  const resetScript = () => {
+    clearInterval(analysisInterval); // Clear any running interval
+    // Additional reset actions if needed
+  };
+
+  observer.observe(document.body, { subtree: true, childList: true });
 
   const newVideoLoaded = async () => {
     const brightOsenseBtnExists =
@@ -25,7 +46,7 @@
       brightOsenseBtn.className = "ytp-button";
 
       brightOsenseBtn.title = "Auto Brightness";
-      brightOsenseimg.style.width = "34px";
+      brightOsenseimg.style.width = "27px";
       brightOsenseimg.style.height = "48px";
 
       brightOsenseBtn.appendChild(brightOsenseimg);
@@ -54,17 +75,8 @@
   };
 
   const handleYoutubePlayerClick = () => {
-    const currentTime = new Date().getTime();
-    if (currentTime - lastClickTime < clickDelay) {
-      return; // Ignore the click if it's within the delay threshold
-    }
-
-    lastClickTime = currentTime; // Update the last click time
-
     isVideoPlaying = document.getElementsByClassName("paused-mode")[0];
-    console.log("isVideoPlaying", isVideoPlaying);
     if (brightOsenseisON && isVideoPlaying) {
-      console.log("start again");
       analysisInterval = setInterval(analyzePixelData, 1000);
     } else {
       clearInterval(analysisInterval);
@@ -128,26 +140,6 @@
       }
     }
 
-    // Log the color distribution
-
-    if (totalDullPixels > totalBrightPixels) {
-      console.log(
-        "Video is black. ---->",
-        "Dull:",
-        totalDullPixels,
-        "Bright:",
-        totalBrightPixels
-      );
-    } else {
-      console.log(
-        "Video is colored. ---->",
-        "Dull:",
-        totalDullPixels,
-        "Bright:",
-        totalBrightPixels
-      );
-    }
-
     adjustBrightness(totalDullPixels, totalBrightPixels);
   };
 
@@ -156,16 +148,14 @@
     const totalPixels = totalDullPixels + totalBrightPixels;
     const dullRatio = totalDullPixels / totalPixels;
 
-    // Map the dull ratio to the desired brightness range (40% to 95%)
+    // Map the dull ratio to the desired brightness range
     const minBrightness = 40; // Minimum brightness level
-    const maxBrightness = 95; // Maximum brightness level
-    const differenceThreshold = 8;
+    const maxBrightness = 80; // Maximum brightness level
+    const differenceThreshold = 100;
 
     // Interpolate brightness based on the dull ratio
     const brightnessLevel =
       minBrightness + (maxBrightness - minBrightness) * dullRatio;
-
-    console.log("current brightness ->", brightnessLevel);
 
     // Calculate the difference between the current and previous opacity
     const opacityDifference = brightnessLevel - previousOpacity;
@@ -176,10 +166,30 @@
       Math.sign(opacityDifference);
 
     previousOpacity += cappedOpacityDifference;
-    console.log("diff ->", cappedOpacityDifference);
     // Update the previous opacity based on the capped difference
 
-    console.log("new brightness ->", previousOpacity);
+    if (totalDullPixels > totalBrightPixels) {
+      console.log(
+        "Video is dull. ---->",
+        "D:",
+        totalDullPixels,
+        "B:",
+        totalBrightPixels,
+        "brightness ->",
+        previousOpacity
+      );
+    } else {
+      console.log(
+        "Video is bright. ---->",
+        "D:",
+        totalDullPixels,
+        "B:",
+        totalBrightPixels,
+        "brightness ->",
+        previousOpacity
+      );
+    }
+
     // Set the brightness level as opacity percentage for the video player
     youtubePlayer.style.opacity = previousOpacity + "%";
   };
