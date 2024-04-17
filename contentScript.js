@@ -4,6 +4,8 @@ console.log("hey");
   let brightOsenseisON = false;
   let currentVideo = "";
 
+  let analysisInterval;
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "YOUTUBE") {
       currentVideo = message.videoId;
@@ -48,6 +50,16 @@ console.log("hey");
         : "assets/brightOsenseOff.svg"
     );
 
+    if (brightOsenseisON) {
+      // Start analyzing pixel data every second
+      analysisInterval = setInterval(analyzePixelData, 1000);
+    } else {
+      // Stop the analysis interval if brightOsenseisON is false
+      clearInterval(analysisInterval);
+    }
+  };
+
+  const analyzePixelData = () => {
     // Create a canvas element to draw the video frame
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -84,17 +96,22 @@ console.log("hey");
       }
     }
 
-    // Determine if the video is predominantly black and white or colored
+    // Log the color distribution
+
     if (totalBlackPixels > totalColoredPixels) {
       console.log(
-        "Video is predominantly black.",
+        "Video is black. ---->",
+        "Black:",
         totalBlackPixels,
+        "Colored:",
         totalColoredPixels
       );
     } else {
       console.log(
-        "Video is predominantly colored.",
+        "Video is colored. ---->",
+        "Black:",
         totalBlackPixels,
+        "Colored:",
         totalColoredPixels
       );
     }
