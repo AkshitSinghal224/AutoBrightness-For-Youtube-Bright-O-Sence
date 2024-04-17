@@ -1,14 +1,9 @@
-console.log("hey");
 (() => {
-  let youtubeLeftControls, youtubePlayer;
+  let youtubeLeftControls, youtubePlayer, analysisInterval, isVideoPlayed;
   let brightOsenseisON = false;
-  let currentVideo = "";
-
-  let analysisInterval;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "YOUTUBE") {
-      currentVideo = message.videoId;
       newVideoLoaded();
     }
   });
@@ -38,6 +33,19 @@ console.log("hey");
       brightOsenseBtn.addEventListener("click", handleBrightOsenseBtnClick);
     }
     youtubePlayer = document.getElementsByClassName("video-stream")[0];
+    youtubePlayer.addEventListener("click", handleYoutubePlayerClick);
+  };
+
+  const handleYoutubePlayerClick = () => {
+    setInterval(() => {}, 5000);
+    isVideoPlayed = document.getElementsByClassName("paused-mode")[0];
+    console.log("isVideoPlayed", isVideoPlayed);
+    if (brightOsenseisON && isVideoPlayed) {
+      console.log("start again");
+      analysisInterval = setInterval(analyzePixelData, 1000);
+    } else {
+      clearInterval(analysisInterval);
+    }
   };
 
   const handleBrightOsenseBtnClick = () => {
@@ -55,6 +63,7 @@ console.log("hey");
       analysisInterval = setInterval(analyzePixelData, 1000);
     } else {
       // Stop the analysis interval if brightOsenseisON is false
+      youtubePlayer.style.opacity = "100%";
       clearInterval(analysisInterval);
     }
   };
@@ -115,5 +124,18 @@ console.log("hey");
         totalColoredPixels
       );
     }
+
+    const isVideoBlack = totalBlackPixels > totalColoredPixels;
+    adjustBrightness(isVideoBlack);
   };
+
+  const adjustBrightness = (isVideoBlack) => {
+    // Define the brightness value to set based on the video content
+    // You can adjust these values according to your preference
+    const brightnessLevel = isVideoBlack ? "80%" : "50%";
+    console.log(brightnessLevel, isVideoBlack);
+    youtubePlayer.style.opacity = brightnessLevel;
+  };
+
+  newVideoLoaded();
 })();
