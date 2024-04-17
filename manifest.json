@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube BrightOsense",
+  "version": "0.1.0",
+  "description": "Automatically adjust screen brightness based on YouTube video content.",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["https://*.youtube.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["contentScript.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/brightOsenseOff.svg",
+        "assets/brightOsenseOn.svg"
+      ],
+      "matches": ["https://*.youtube.com/*"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
