@@ -1,13 +1,39 @@
 (() => {
-  let youtubeLeftControls, youtubePlayer, analysisInterval, isVideoPlaying;
+  let youtubeLeftControls,
+    youtubePlayer,
+    analysisInterval,
+    isVideoPlaying,
+    minBrightness,
+    maxBrightness,
+    differenceThreshold;
   let brightOsenseisON = false;
   let previousOpacity = 100;
   let isSpacebarPressed = false;
+
+  chrome.storage.sync.get(
+    ["minBrightness", "maxBrightness", "differenceThreshold"],
+    (result) => {
+      minBrightness = result.minBrightness; // Minimum brightness level
+      maxBrightness = result.maxBrightness; // Maximum brightness level
+      differenceThreshold = result.differenceThreshold;
+    }
+  );
+
+  
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "YOUTUBE") {
       newVideoLoaded();
     }
+  });
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "UPDATE_VARIABLES") {
+      minBrightness = message.minBrightness;
+      maxBrightness = message.maxBrightness;
+      differenceThreshold = message.differenceThreshold;
+    }
+    
   });
 
   // Create a MutationObserver to watch for changes in the video player container
@@ -144,14 +170,11 @@
   };
 
   const adjustBrightness = (totalDullPixels, totalBrightPixels) => {
+    console.log(maxBrightness, minBrightness, differenceThreshold);
+
     // Calculate the ratio of dull pixels to the total pixels
     const totalPixels = totalDullPixels + totalBrightPixels;
     const dullRatio = totalDullPixels / totalPixels;
-
-    // Map the dull ratio to the desired brightness range
-    const minBrightness = 40; // Minimum brightness level
-    const maxBrightness = 80; // Maximum brightness level
-    const differenceThreshold = 100;
 
     // Interpolate brightness based on the dull ratio
     const brightnessLevel =
