@@ -3,20 +3,16 @@
     youtubePlayer,
     analysisInterval,
     isVideoPlaying,
-    minBrightness,
-    maxBrightness,
-    differenceThreshold;
+    minBrightness;
   let brightOsenseisON = false;
   let previousOpacity = 100;
   let isSpacebarPressed = false;
   let SkipFrames = 0;
 
   chrome.storage.sync.get(
-    ["minBrightness", "maxBrightness", "differenceThreshold"],
+    ["minBrightness"],
     (result) => {
       minBrightness = result.minBrightness; // Minimum brightness level
-      maxBrightness = result.maxBrightness; // Maximum brightness level
-      differenceThreshold = result.differenceThreshold;
     }
   );
 
@@ -28,9 +24,7 @@
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "UPDATE_VARIABLES") {
-      minBrightness = message.minBrightness;
-      maxBrightness = message.maxBrightness || 80;
-      differenceThreshold = message.differenceThreshold || 15;
+      minBrightness = message.minBrightness || 40;
     }
   });
 
@@ -191,7 +185,7 @@
   };
 
   const adjustBrightness = (totalDullPixels, totalBrightPixels) => {
-    console.log(maxBrightness, minBrightness, differenceThreshold);
+    console.log(minBrightness);
 
     // Calculate the ratio of dull pixels to the total pixels
     const totalPixels = totalDullPixels + totalBrightPixels;
@@ -199,40 +193,40 @@
 
     // Interpolate brightness based on the dull ratio
     const brightnessLevel =
-      minBrightness + (maxBrightness - minBrightness) * dullRatio;
+      minBrightness + (100 - minBrightness) * dullRatio;
 
     // Calculate the difference between the current and previous opacity
     const opacityDifference = brightnessLevel - previousOpacity;
 
-    // Cap the change in brightness b/w differenceThreshold
+    // Cap the change in brightness b/w 15
     const cappedOpacityDifference =
-      Math.min(Math.abs(opacityDifference), differenceThreshold) *
+      Math.min(Math.abs(opacityDifference), 15) *
       Math.sign(opacityDifference);
 
     previousOpacity += cappedOpacityDifference;
     // Update the previous opacity based on the capped difference
 
-    if (totalDullPixels > totalBrightPixels) {
-      console.log(
-        "Video is dull. ---->",
-        "D:",
-        totalDullPixels,
-        "B:",
-        totalBrightPixels,
-        "brightness ->",
-        previousOpacity
-      );
-    } else {
-      console.log(
-        "Video is bright. ---->",
-        "D:",
-        totalDullPixels,
-        "B:",
-        totalBrightPixels,
-        "brightness ->",
-        previousOpacity
-      );
-    }
+    // if (totalDullPixels > totalBrightPixels) {
+    //   console.log(
+    //     "Video is dull. ---->",
+    //     "D:",
+    //     totalDullPixels,
+    //     "B:",
+    //     totalBrightPixels,
+    //     "brightness ->",
+    //     previousOpacity
+    //   );
+    // } else {
+    //   console.log(
+    //     "Video is bright. ---->",
+    //     "D:",
+    //     totalDullPixels,
+    //     "B:",
+    //     totalBrightPixels,
+    //     "brightness ->",
+    //     previousOpacity
+    //   );
+    // }
 
     // Set the brightness level as opacity percentage for the video player
     youtubePlayer.style.opacity = previousOpacity + "%";
