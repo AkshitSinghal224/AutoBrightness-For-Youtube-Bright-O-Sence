@@ -9,6 +9,7 @@
   let brightOsenseisON = false;
   let previousOpacity = 100;
   let isSpacebarPressed = false;
+  let SkipFrames = 0;
 
   chrome.storage.sync.get(
     ["minBrightness", "maxBrightness", "differenceThreshold"],
@@ -18,8 +19,6 @@
       differenceThreshold = result.differenceThreshold;
     }
   );
-
-  
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "YOUTUBE") {
@@ -33,7 +32,6 @@
       maxBrightness = message.maxBrightness;
       differenceThreshold = message.differenceThreshold;
     }
-    
   });
 
   // Create a MutationObserver to watch for changes in the video player container
@@ -44,18 +42,13 @@
         mutation.target.classList.contains("video-stream")
       ) {
         // Reset the script when a new video starts
-        resetScript();
+        clearInterval(analysisInterval);
         // Reinitialize the script for the new video
         newVideoLoaded();
         break;
       }
     }
   });
-
-  const resetScript = () => {
-    clearInterval(analysisInterval); // Clear any running interval
-    // Additional reset actions if needed
-  };
 
   observer.observe(document.body, { subtree: true, childList: true });
 
@@ -130,43 +123,65 @@
   };
 
   const analyzePixelData = () => {
-    // Create a canvas element to draw the video frame
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+    // Check if the youtubePlayer is ready
+    if (youtubePlayer.readyState >= youtubePlayer.HAVE_CURRENT_DATA) {
+      // Create a canvas element to draw the video frame
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      SkipFrames = 0;
 
-    // Set canvas dimensions to match the video
-    canvas.width = youtubePlayer.videoWidth;
-    canvas.height = youtubePlayer.videoHeight;
+      // Set canvas dimensions to match the video
+      canvas.width = youtubePlayer.videoWidth;
+      canvas.height = youtubePlayer.videoHeight;
 
-    // Draw the current video frame onto the canvas
-    ctx.drawImage(youtubePlayer, 0, 0, canvas.width, canvas.height);
+      // Draw the current video frame onto the canvas
+      ctx.drawImage(youtubePlayer, 0, 0, canvas.width, canvas.height);
 
-    // Get pixel data from the canvas
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imageData.data;
+      try {
+        // Get pixel data from the canvas
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
 
-    // Analyze pixel data to determine color distribution
-    let totalDullPixels = 0;
-    let totalBrightPixels = 0;
+        // Analyze pixel data to determine color distribution
+        let totalDullPixels = 0;
+        let totalBrightPixels = 0;
 
-    for (let i = 0; i < pixels.length; i += 64 * 4) {
-      // Extract RGB values of each pixel
-      const r = pixels[i];
-      const g = pixels[i + 1];
-      const b = pixels[i + 2];
+        for (let i = 0; i < pixels.length; i += 64 * 4) {
+          // Extract RGB values of each pixel
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
 
-      // Calculate pixel brightness (luminance)
-      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+          // Calculate pixel brightness (luminance)
+          const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
-      // Check if pixel is black or white based on luminance threshold
-      if (luminance < 0.1 || luminance > 0.9) {
-        totalDullPixels++;
-      } else {
-        totalBrightPixels++;
+          // Check if pixel is black or white based on luminance threshold
+          if (luminance < 0.1 || luminance > 0.9) {
+            totalDullPixels++;
+          } else {
+            totalBrightPixels++;
+          }
+        }
+
+        adjustBrightness(totalDullPixels, totalBrightPixels);
+      } catch (error) {
+        console.error("Error analyzing pixel data:", error);
+      }
+    } else {
+      console.log("youtubePlayer is not ready yet. Skipping frame.");
+      SkipFrames++;
+      if (SkipFrames === 4) {
+        clearInterval(analysisInterval);
+        brightOsenseisON = false;
+        const brightOsenseBtn =
+          document.getElementsByClassName("brightOsense-btn")[0];
+        brightOsenseBtn.src = chrome.runtime.getURL(
+          brightOsenseisON
+            ? "assets/brightOsenseOn.svg"
+            : "assets/brightOsenseOff.svg"
+        );
       }
     }
-
-    adjustBrightness(totalDullPixels, totalBrightPixels);
   };
 
   const adjustBrightness = (totalDullPixels, totalBrightPixels) => {
