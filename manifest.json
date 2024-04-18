@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "YouTube BrightOsense",
+  "name": "BrightOsense for YouTube",
   "version": "0.1.0",
   "description": "Automatically adjust screen brightness based on YouTube video content.",
   "permissions": ["tabs", "storage"],
