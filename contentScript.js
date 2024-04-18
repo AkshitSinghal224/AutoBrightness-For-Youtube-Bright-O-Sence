@@ -29,8 +29,8 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "UPDATE_VARIABLES") {
       minBrightness = message.minBrightness;
-      maxBrightness = message.maxBrightness;
-      differenceThreshold = message.differenceThreshold;
+      maxBrightness = message.maxBrightness || 80;
+      differenceThreshold = message.differenceThreshold || 15;
     }
   });
 
@@ -123,6 +123,12 @@
   };
 
   const analyzePixelData = () => {
+
+    isVideoPlaying = document.getElementsByClassName("paused-mode")[0];
+    if (isVideoPlaying) {
+      return;
+    }
+
     // Check if the youtubePlayer is ready
     if (youtubePlayer.readyState >= youtubePlayer.HAVE_CURRENT_DATA) {
       // Create a canvas element to draw the video frame
